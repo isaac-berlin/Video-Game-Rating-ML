@@ -1,110 +1,144 @@
 import torch
 import pandas as pd
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
 
-# set the device to cuda if available
+# Set device (CPU or GPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# load the data from the Data directory
-training_data = pd.read_csv("Data/Video_games_esrb_rating.csv") # 1895 rows x 34 columns
-test_data = pd.read_csv("Data/test_esrb.csv") # 500 rows x 34 columns
+# Load data
+data = pd.read_csv("../Data/Video_games_esrb_rating.csv")  # Assuming it's the same dataset
+data = data.drop(columns=["title"])  # Remove title column
 
-# Remove the title column from both datasets
-training_data = training_data.drop(columns=["title"]) # 1895 rows x 33 columns
-test_data = test_data.drop(columns=["title"]) # 500 rows x 33 columns
+# Convert labels to numerical values
+data["esrb_rating"] = data["esrb_rating"].map({"E": 0, "ET": 1, "M": 2, "T": 3})
 
-# convert the esrb_rating column to a numerical value for both datasets
-training_data["esrb_rating"] = training_data["esrb_rating"].map({"E": 0, "ET": 1, "M": 2, "T": 3})
-test_data["esrb_rating"] = test_data["esrb_rating"].map({"E": 0, "ET": 1, "M": 2, "T": 3})
+# Split data into features and labels
+X = data.drop(columns=["esrb_rating"]).values
+Y = data["esrb_rating"].values
 
-# split the training data into features and labels
-X_train = training_data.drop(columns=["esrb_rating"]).values
-Y_train = training_data["esrb_rating"].values
+# Train-test split
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
-X_test = test_data.drop(columns=["esrb_rating"]).values
-Y_test = test_data["esrb_rating"].values
+# Normalize features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-# create a dataloader for the data
-train_data = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.Tensor(Y_train))
-train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True)
+# Convert numpy arrays to PyTorch tensors and move to device
+X_train = torch.Tensor(X_train).to(device)
+X_test = torch.Tensor(X_test).to(device)
+Y_train = torch.LongTensor(Y_train).to(device)
+Y_test = torch.LongTensor(Y_test).to(device)
 
-test_data = torch.utils.data.TensorDataset(torch.Tensor(X_test), torch.Tensor(Y_test))
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=True)
-
-# define the model
+# Define MLP model with changes in architecture
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
-        self.linear1 = nn.Linear(32, 64)
-        self.linear2 = nn.Linear(64, 16)
-        self.linear3 = nn.Linear(16, 4)
+        self.fc1 = nn.Linear(32, 512)   # Input size 32 (features), output size 512
+        self.fc2 = nn.Linear(512, 512)  # Increased neurons in hidden layer
+        self.fc3 = nn.Linear(512, 256)  # Adjusted layer size
+        self.fc4 = nn.Linear(256, 128)  # Adjusted layer size
+        self.fc5 = nn.Linear(128, 64)   # Adjusted layer size
+        self.fc6 = nn.Linear(64, 4)     # Output layer with 4 classes (E, ET, M, T)
 
     def forward(self, x):
-        out = self.linear1(x)
-        out = torch.relu(out)
-        
-        out = self.linear2(out)
-        out = torch.relu(out)
-        
-        out = self.linear3(out)
-        
-        return out
-    
+        x = F.relu(self.fc1(x))  # ReLU activation for all hidden layers
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x))
+        x = self.fc6(x)          # No activation for output layer
+        return x
 
-# create the model
+# Initialize model, loss, optimizer
 model = MLP().to(device)
+criterion = nn.CrossEntropyLoss()  # Cross-entropy loss for multi-class classification
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)  # Adam optimizer
+scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)  # Reduce learning rate on plateau
 
-# define the loss function and optimizer
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-# train the model
-num_epochs = 20
-
-epoch_loss = []
-epoch_accuracy = []
-
+# Training loop with increased epochs
+num_epochs = 100  # Increased number of epochs for training
+best_accuracy = 0
+early_stopping_counter = 0
+train_losses = []
+test_losses = []
+train_accuracies = []
+test_accuracies = []
 
 for epoch in range(num_epochs):
-    for i, (features, labels) in enumerate(train_loader):
-        features = features.to(device)
-        labels = labels.to(device).long()
-        
-        # forward pass
-        outputs = model(features)
-        loss = criterion(outputs, labels)
-        epoch_loss.append(loss.item())
-        
-        # backward pass and optimization
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        if (i+1) % 10 == 0:
-            print(f"Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}")
-
+    # Train
+    model.train()
+    optimizer.zero_grad()
+    outputs = model(X_train)
+    loss = criterion(outputs, Y_train)
+    loss.backward()
+    optimizer.step()
+    train_losses.append(loss.item())
+    
+    # Validation
+    model.eval()
     with torch.no_grad():
-        correct = 0
-        total = 0
-        for features, labels in test_loader:
-            features = features.to(device)
-            labels = labels.to(device).long()
-            
-            outputs = model(features)
-            _, predicted = torch.max(outputs.data, 1)
-            
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+        train_accuracy = torch.sum(torch.argmax(outputs, dim=1) == Y_train).item() / len(Y_train)
+        train_accuracies.append(train_accuracy)
         
-        accuracy = 100 * correct / total
-        epoch_accuracy.append(accuracy)
-        print(f"Accuracy of the model on the test set: {accuracy:.2f}%")
+        test_outputs = model(X_test)
+        test_loss = criterion(test_outputs, Y_test)
+        test_losses.append(test_loss.item())
         
+        test_accuracy = torch.sum(torch.argmax(test_outputs, dim=1) == Y_test).item() / len(Y_test)
+        test_accuracies.append(test_accuracy)
+        
+        # Learning rate scheduler
+        scheduler.step(test_loss)
+        
+        # Early stopping
+        if test_accuracy > best_accuracy:
+            best_accuracy = test_accuracy
+            early_stopping_counter = 0
+        else:
+            early_stopping_counter += 1
+            if early_stopping_counter >= 10:
+                print(f'Early stopping at epoch {epoch}, best accuracy: {best_accuracy}')
+                break
 
-# plot the loss and accuracy
-plt.plot(epoch_loss)
-plt.title("Loss")
-plt.xlabel("Iterations")
-plt.ylabel("Loss")
+# Evaluate on test set and provide debugging information
+model.eval()
+with torch.no_grad():
+    test_outputs = model(X_test)
+    predictions = torch.argmax(test_outputs, dim=1)
+    accuracy = torch.sum(predictions == Y_test).item() / len(Y_test)
+    print(f'Test accuracy: {accuracy:.2f}')
+
+    # Confusion matrix
+    print('Confusion Matrix:')
+    print(confusion_matrix(Y_test.cpu(), predictions.cpu()))
+
+    # Classification report
+    print('Classification Report:')
+    print(classification_report(Y_test.cpu(), predictions.cpu(), target_names=["E", "ET", "M", "T"]))
+
+# Plotting
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(train_losses, label='Train')
+plt.plot(test_losses, label='Test')
+plt.title('Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(train_accuracies, label='Train')
+plt.plot(test_accuracies, label='Test')
+plt.title('Accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+
 plt.show()
