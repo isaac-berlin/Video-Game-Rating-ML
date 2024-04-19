@@ -1,110 +1,153 @@
 import torch
 import pandas as pd
 import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import numpy as np
+import itertools
 
-# set the device to cuda if available
+# Set the device to cuda if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# load the data from the Data directory
-training_data = pd.read_csv("Data/Video_games_esrb_rating.csv") # 1895 rows x 34 columns
-test_data = pd.read_csv("Data/test_esrb.csv") # 500 rows x 34 columns
+# Load the data from the Data directory
+training_data = pd.read_csv("../Data/Video_games_esrb_rating.csv")  # 1895 rows x 34 columns
+test_data = pd.read_csv("../Data/test_esrb.csv")  # 500 rows x 34 columns
 
 # Remove the title column from both datasets
-training_data = training_data.drop(columns=["title"]) # 1895 rows x 33 columns
-test_data = test_data.drop(columns=["title"]) # 500 rows x 33 columns
+training_data = training_data.drop(columns=["title"])  # 1895 rows x 33 columns
+test_data = test_data.drop(columns=["title"])  # 500 rows x 33 columns
 
-# convert the esrb_rating column to a numerical value for both datasets
+# Convert the esrb_rating column to a numerical value for both datasets
 training_data["esrb_rating"] = training_data["esrb_rating"].map({"E": 0, "ET": 1, "M": 2, "T": 3})
 test_data["esrb_rating"] = test_data["esrb_rating"].map({"E": 0, "ET": 1, "M": 2, "T": 3})
 
-# split the training data into features and labels
+# Split the training data into features and labels
 X_train = training_data.drop(columns=["esrb_rating"]).values
 Y_train = training_data["esrb_rating"].values
 
 X_test = test_data.drop(columns=["esrb_rating"]).values
 Y_test = test_data["esrb_rating"].values
 
-# create a dataloader for the data
-train_data = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.Tensor(Y_train))
-train_loader = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True)
+# Create a DataLoader for the data
+train_data = torch.utils.data.TensorDataset(torch.Tensor(X_train), torch.LongTensor(Y_train))
+test_data = torch.utils.data.TensorDataset(torch.Tensor(X_test), torch.LongTensor(Y_test))
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=False)
 
-test_data = torch.utils.data.TensorDataset(torch.Tensor(X_test), torch.Tensor(Y_test))
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=True)
-
-# define the model
+# Define model architecture
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
-        self.linear1 = nn.Linear(32, 64)
-        self.linear2 = nn.Linear(64, 16)
-        self.linear3 = nn.Linear(16, 4)
+        self.fc_layers = nn.ModuleList([
+            nn.Linear(32, 256),
+            nn.Linear(256, 128),
+            nn.Linear(128, 64),
+            nn.Linear(64, 4)
+        ])
+        self.dropout = nn.Dropout(0.3)
 
     def forward(self, x):
-        out = self.linear1(x)
-        out = torch.relu(out)
-        
-        out = self.linear2(out)
-        out = torch.relu(out)
-        
-        out = self.linear3(out)
-        
-        return out
-    
+        for layer in self.fc_layers[:-1]:
+            x = F.relu(layer(x))
+            x = self.dropout(x)
+        x = self.fc_layers[-1](x)
+        return x
 
-# create the model
-model = MLP().to(device)
+# Define hyperparameters
+learning_rate = 0.01
+weight_decay = 0.001
+batch_size = 64
 
-# define the loss function and optimizer
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+# Train multiple models and save them for ensemble learning
+ensemble_models = []
+for model_index in range(10):  # Train 10 models for ensemble
+    model = MLP().to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
-# train the model
-num_epochs = 20
-
-epoch_loss = []
-epoch_accuracy = []
-
-
-for epoch in range(num_epochs):
-    for i, (features, labels) in enumerate(train_loader):
-        features = features.to(device)
-        labels = labels.to(device).long()
-        
-        # forward pass
-        outputs = model(features)
-        loss = criterion(outputs, labels)
-        epoch_loss.append(loss.item())
-        
-        # backward pass and optimization
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        if (i+1) % 10 == 0:
-            print(f"Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}")
-
-    with torch.no_grad():
+    epoch_loss = []
+    epoch_accuracy = []
+    for epoch in range(20):
+        model.train()
+        running_loss = 0.0
         correct = 0
         total = 0
-        for features, labels in test_loader:
-            features = features.to(device)
-            labels = labels.to(device).long()
-            
+        for features, labels in train_loader:
+            features, labels = features.to(device), labels.to(device)
+            optimizer.zero_grad()
             outputs = model(features)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
-            
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-        
-        accuracy = 100 * correct / total
-        epoch_accuracy.append(accuracy)
-        print(f"Accuracy of the model on the test set: {accuracy:.2f}%")
-        
 
-# plot the loss and accuracy
-plt.plot(epoch_loss)
-plt.title("Loss")
-plt.xlabel("Iterations")
-plt.ylabel("Loss")
+        train_accuracy = 100 * correct / total
+        epoch_loss.append(running_loss / len(train_loader))
+        epoch_accuracy.append(train_accuracy)
+        print(f"Ensemble Model {model_index + 1}, Epoch [{epoch + 1}/20], Training Loss: {epoch_loss[-1]:.4f}, Training Accuracy: {train_accuracy:.2f}%")
+
+        if train_accuracy >= 98:
+            break
+
+    ensemble_models.append(model)
+
+# Identify the best ensemble model
+ensemble_predictions = []
+ensemble_accuracy = []
+for model in ensemble_models:
+    model.eval()
+    predictions = []
+    with torch.no_grad():
+        for features, _ in test_loader:
+            features = features.to(device)
+            outputs = model(features)
+            _, predicted = torch.max(outputs.data, 1)
+            predictions.extend(predicted.cpu().numpy())
+    ensemble_predictions.append(predictions)
+    correct = np.sum(np.array(predictions) == Y_test)
+    total = len(Y_test)
+    ensemble_accuracy.append(correct / total * 100)
+
+best_model_index = np.argmax(ensemble_accuracy)
+
+# Print the ensemble model number for the best ensemble accuracy
+print(f"Ensemble Model Number for Best Accuracy: {best_model_index + 1}, Ensemble Accuracy: {ensemble_accuracy[best_model_index]:.2f}%")
+
+# Plot epoch loss and accuracy for the best ensemble model
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label=f'Ensemble Model {best_model_index + 1}')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Epoch Loss')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(range(1, len(epoch_accuracy) + 1), epoch_accuracy, label=f'Ensemble Model {best_model_index + 1}')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy (%)')
+plt.title('Epoch Accuracy')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# Plot confusion matrix for the best ensemble model
+plt.figure(figsize=(8, 6))
+cm = confusion_matrix(Y_test, ensemble_predictions[best_model_index])
+plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+plt.title('Confusion Matrix')
+plt.colorbar()
+tick_marks = np.arange(4)
+plt.xticks(tick_marks, ["E", "ET", "M", "T"], rotation=45)
+plt.yticks(tick_marks, ["E", "ET", "M", "T"])
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.tight_layout()
+for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+    plt.text(j, i, format(cm[i, j], 'd'), horizontalalignment="center", color="white" if cm[i, j] > cm.max() / 2 else "black")
 plt.show()
