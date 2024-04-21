@@ -1,7 +1,7 @@
 import pandas as pd
-
+import numpy as np
 # Load the dataset
-file_path = r'Video-Game-Rating-ML\Data\Video_games_esrb_rating.csv'
+file_path = 'Data\Video_games_esrb_rating.csv'
 data = pd.read_csv(file_path)
 
 # Display the first few rows of the dataframe
@@ -18,6 +18,7 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import f1_score
 import xgboost as xgb
 from xgboost import XGBClassifier
+import matplotlib.pyplot as plt
 
 # Encode the 'esrb_rating' column
 le = LabelEncoder()
@@ -89,7 +90,7 @@ print("XGBoost Boosting F1 Score: ", f1_score(y_test, XGBoost_pred, average='wei
 
 
 # Load the test dataset
-test_file_path = r'Video-Game-Rating-ML\Data\test_esrb.csv'
+test_file_path = 'Data\Video_games_esrb_rating.csv'
 test_data = pd.read_csv(test_file_path)
 
 # Display the first few rows of the dataframe
@@ -148,3 +149,27 @@ results = {
 }
 
 print(pd.DataFrame(results))
+
+
+# Plotting the accuracy of the models
+models = ["Random Forest", "Bagging", "Boosting", "AdaBoostSAMME", "XGBoost"]
+
+validation_accuracies_actual = [0.8522, 0.8549, 0.8443, 0.7599, 0.8628]
+test_accuracies_actual = [0.9103, 0.9082, 0.8786, 0.7604, 0.9108]
+
+bar_width = 0.35
+index = np.arange(len(models))
+
+fig, ax = plt.subplots()
+bar1 = ax.bar(index, validation_accuracies_actual, bar_width, label='Validation Accuracy')
+bar2 = ax.bar(index + bar_width, test_accuracies_actual, bar_width, label='Test Accuracy')
+
+ax.set_xlabel('Model')
+ax.set_ylabel('Accuracy')
+ax.set_title('Validation vs Test Accuracy for Different Models')
+ax.set_xticks(index + bar_width / 2)
+ax.set_xticklabels(models)
+ax.legend()
+
+plt.show()
+
