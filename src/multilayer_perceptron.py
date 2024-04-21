@@ -59,9 +59,11 @@ learning_rate = 0.01
 weight_decay = 0.001
 batch_size = 64
 
-# Train multiple models and save them for ensemble learning
-ensemble_models = []
-for model_index in range(10):  # Train 10 models for ensemble
+# Train multiple models and save them for testing
+models = []
+models_loss = []
+models_accuracy = []
+for model_index in range(10):  # Train 10 models
     model = MLP().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -89,17 +91,19 @@ for model_index in range(10):  # Train 10 models for ensemble
         train_accuracy = 100 * correct / total
         epoch_loss.append(running_loss / len(train_loader))
         epoch_accuracy.append(train_accuracy)
+        
         print(f"Model {model_index + 1}, Epoch [{epoch + 1}/20], Training Loss: {epoch_loss[-1]:.4f}, Training Accuracy: {train_accuracy:.2f}%")
 
         if train_accuracy >= 98:
             break
-
-    ensemble_models.append(model)
+    models_loss.append(epoch_loss)
+    models_accuracy.append(epoch_accuracy)
+    models.append(model)
 
 # Identify the best model
 all_predictions = []
 all_accuracy = []
-for model in ensemble_models:
+for model in models:
     model.eval()
     predictions = []
     with torch.no_grad():
@@ -118,21 +122,49 @@ best_model_index = np.argmax(all_accuracy)
 # Print the model for the best accuracy
 print(f"Model Number with Best Accuracy: {best_model_index + 1}, Accuracy: {all_accuracy[best_model_index]:.2f}%")
 
-# Plot epoch loss and accuracy for the best ensemble model
+# Plot epoch loss and accuracy for the best ensemble model (green) and all other models (blue)
 plt.figure(figsize=(12, 5))
 plt.subplot(1, 2, 1)
-plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label=f'Model {best_model_index + 1}')
+models_loss = np.array(models_loss)
+for i, model in enumerate(models_loss):
+    if i != best_model_index:
+        plt.plot(range(1, len(model) + 1), model, label=f'Model {i + 1}', color='blue', alpha=0.25)
+    else:
+        plt.plot(range(1, len(model) + 1), model, label=f'Model {i + 1}', color='red')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Epoch Loss')
 plt.legend()
 
 plt.subplot(1, 2, 2)
-plt.plot(range(1, len(epoch_accuracy) + 1), epoch_accuracy, label=f'Model {best_model_index + 1}')
+models_accuracy = np.array(models_accuracy)
+for i, model in enumerate(models_accuracy):
+    if i != best_model_index:
+        plt.plot(range(1, len(model) + 1), model, label=f'Model {i + 1}', color='blue', alpha=0.25)
+    else:
+        plt.plot(range(1, len(model) + 1), model, label=f'Model {i + 1}', color='red')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy (%)')
 plt.title('Epoch Accuracy')
 plt.legend()
+plt.tight_layout()
+plt.savefig("all_model_loss_accuracy.png")
+plt.show()
+
+# plot epoch loss and accuracy for the best model
+plt.clf()
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.plot(range(1, len(models_loss[best_model_index]) + 1), models_loss[best_model_index], color='green')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Epoch Loss')
+
+plt.subplot(1, 2, 2)
+plt.plot(range(1, len(models_accuracy[best_model_index]) + 1), models_accuracy[best_model_index], color='green')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy (%)')
+plt.title('Epoch Accuracy')
 plt.tight_layout()
 plt.savefig("best_model_loss_accuracy.png")
 plt.show()
