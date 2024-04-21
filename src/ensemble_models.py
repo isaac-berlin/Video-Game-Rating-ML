@@ -93,7 +93,7 @@ print("XGBoost Boosting F1 Score: ", f1_score(y_test, XGBoost_pred, average='wei
 
 
 # Load the test dataset
-test_file_path = 'Data\Video_games_esrb_rating.csv'
+test_file_path = 'Data\test_esrb.csv'
 test_data = pd.read_csv(test_file_path)
 
 # Display the first few rows of the dataframe
