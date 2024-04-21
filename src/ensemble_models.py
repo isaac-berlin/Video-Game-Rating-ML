@@ -252,3 +252,7 @@ results_balanced = {
     "Precision": [rf_precision_test_set_balanced],
     "F1 Score": [rf_f1_test_set_balanced]
 }
+
+
+
+print(pd.DataFrame(results_balanced))
