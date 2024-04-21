@@ -253,6 +253,6 @@ results_balanced = {
     "F1 Score": [rf_f1_test_set_balanced]
 }
 
-
-
 print(pd.DataFrame(results_balanced))
+
+plot_confusion_matrix(y_test_set, rf_pred_test_set_balanced, 'Confusion Matrix for RF Balanced', 'rf_balanced_confusion_matrix.png')
