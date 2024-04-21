@@ -98,7 +98,7 @@ print("XGBoost Boosting F1 Score: ", f1_score(y_test, XGBoost_pred, average='wei
 
 
 # Load the test dataset
-test_file_path = 'Data\test_esrb.csv'
+test_file_path = r'Data\test_esrb.csv'
 test_data = pd.read_csv(test_file_path)
 
 # Display the first few rows of the dataframe
@@ -204,3 +204,51 @@ plot_confusion_matrix(y_test_set, boosting_pred_test_set, 'Confusion Matrix for 
 plot_confusion_matrix(y_test_set, adaboostSAMME_pred_test_set, 'Confusion Matrix for AdaBoost', 'adaboost_confusion_matrix.png')
 plot_confusion_matrix(y_test_set, XGBoost_pred_test_set, 'Confusion Matrix for XGBoost', 'xgboost_confusion_matrix.png')
 
+#balance dataset
+
+
+random_forest_balanced = RandomForestClassifier(random_state=42, class_weight='balanced')
+
+
+
+# Train the models
+random_forest_balanced.fit(X_train, y_train)
+
+# Predictions
+rf_pred_balanced = random_forest_balanced.predict(X_test)
+
+
+
+# Evaluate the models
+rf_accuracy_balanced = accuracy_score(y_test, rf_pred_balanced)
+
+
+print("Random Forest Accuracy (Balanced): ", rf_accuracy_balanced)
+print("Random Forest Recall (Balanced): ", recall_score(y_test, rf_pred_balanced, average='weighted'))
+print("Random Forest Precision (Balanced): ", precision_score(y_test, rf_pred_balanced, average='weighted'))
+print("Random Forest F1 Score (Balanced): ", f1_score(y_test, rf_pred_balanced, average='weighted'), "\n")
+
+
+
+# Use the trained models to make predictions on the test set
+rf_pred_test_set_balanced = random_forest_balanced.predict(X_test_set)
+
+
+# Evaluate the models on the test set
+rf_accuracy_test_set_balanced = accuracy_score(y_test_set, rf_pred_test_set_balanced)
+
+
+# Performance metrics
+rf_recall_test_set_balanced = recall_score(y_test_set, rf_pred_test_set_balanced, average='weighted')
+rf_precision_test_set_balanced = precision_score(y_test_set, rf_pred_test_set_balanced, average='weighted')
+rf_f1_test_set_balanced = f1_score(y_test_set, rf_pred_test_set_balanced, average='weighted')
+
+
+# Display the results
+results_balanced = {
+    "Model": ["Random Forest (Balanced)"],
+    "Accuracy": [rf_accuracy_test_set_balanced],
+    "Recall": [rf_recall_test_set_balanced],
+    "Precision": [rf_precision_test_set_balanced],
+    "F1 Score": [rf_f1_test_set_balanced]
+}
