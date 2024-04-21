@@ -1,4 +1,7 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import itertools
 import numpy as np
 # Load the dataset
 file_path = 'Data\Video_games_esrb_rating.csv'
@@ -172,4 +175,27 @@ ax.set_xticklabels(models)
 ax.legend()
 
 plt.show()
+def plot_confusion_matrix(y_test, predictions, title='Confusion Matrix', filename='confusion_matrix.png'):
+    plt.clf()
+    plt.figure(figsize=(8, 6))
+    cm = confusion_matrix(y_test, predictions)
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(4)
+    plt.xticks(tick_marks, ["E", "ET", "M", "T"], rotation=45)
+    plt.yticks(tick_marks, ["E", "ET", "M", "T"])
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.tight_layout()
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+      plt.text(j, i, format(cm[i, j], 'd'), horizontalalignment="center", color="white" if cm[i, j] > cm.max() / 2 else "black")
+    plt.savefig(filename)
+    plt.show()
+
+plot_confusion_matrix(y_test_set, rf_pred_test_set, 'Confusion Matrix for RF', 'rf_confusion_matrix.png')
+plot_confusion_matrix(y_test_set, bagging_pred_test_set, 'Confusion Matrix for Bagging', 'bagging_confusion_matrix.png')
+plot_confusion_matrix(y_test_set, boosting_pred_test_set, 'Confusion Matrix for Boosting', 'boosting_confusion_matrix.png')
+plot_confusion_matrix(y_test_set, adaboostSAMME_pred_test_set, 'Confusion Matrix for AdaBoost', 'adaboost_confusion_matrix.png')
+plot_confusion_matrix(y_test_set, XGBoost_pred_test_set, 'Confusion Matrix for XGBoost', 'xgboost_confusion_matrix.png')
 
