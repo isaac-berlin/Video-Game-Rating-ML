@@ -89,16 +89,16 @@ for model_index in range(10):  # Train 10 models for ensemble
         train_accuracy = 100 * correct / total
         epoch_loss.append(running_loss / len(train_loader))
         epoch_accuracy.append(train_accuracy)
-        print(f"Ensemble Model {model_index + 1}, Epoch [{epoch + 1}/20], Training Loss: {epoch_loss[-1]:.4f}, Training Accuracy: {train_accuracy:.2f}%")
+        print(f"Model {model_index + 1}, Epoch [{epoch + 1}/20], Training Loss: {epoch_loss[-1]:.4f}, Training Accuracy: {train_accuracy:.2f}%")
 
         if train_accuracy >= 98:
             break
 
     ensemble_models.append(model)
 
-# Identify the best ensemble model
-ensemble_predictions = []
-ensemble_accuracy = []
+# Identify the best model
+all_predictions = []
+all_accuracy = []
 for model in ensemble_models:
     model.eval()
     predictions = []
@@ -108,37 +108,39 @@ for model in ensemble_models:
             outputs = model(features)
             _, predicted = torch.max(outputs.data, 1)
             predictions.extend(predicted.cpu().numpy())
-    ensemble_predictions.append(predictions)
+    all_predictions.append(predictions)
     correct = np.sum(np.array(predictions) == Y_test)
     total = len(Y_test)
-    ensemble_accuracy.append(correct / total * 100)
+    all_accuracy.append(correct / total * 100)
 
-best_model_index = np.argmax(ensemble_accuracy)
+best_model_index = np.argmax(all_accuracy)
 
-# Print the ensemble model number for the best ensemble accuracy
-print(f"Ensemble Model Number for Best Accuracy: {best_model_index + 1}, Ensemble Accuracy: {ensemble_accuracy[best_model_index]:.2f}%")
+# Print the model for the best accuracy
+print(f"Model Number with Best Accuracy: {best_model_index + 1}, Accuracy: {all_accuracy[best_model_index]:.2f}%")
 
 # Plot epoch loss and accuracy for the best ensemble model
 plt.figure(figsize=(12, 5))
 plt.subplot(1, 2, 1)
-plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label=f'Ensemble Model {best_model_index + 1}')
+plt.plot(range(1, len(epoch_loss) + 1), epoch_loss, label=f'Model {best_model_index + 1}')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Epoch Loss')
 plt.legend()
 
 plt.subplot(1, 2, 2)
-plt.plot(range(1, len(epoch_accuracy) + 1), epoch_accuracy, label=f'Ensemble Model {best_model_index + 1}')
+plt.plot(range(1, len(epoch_accuracy) + 1), epoch_accuracy, label=f'Model {best_model_index + 1}')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy (%)')
 plt.title('Epoch Accuracy')
 plt.legend()
 plt.tight_layout()
+plt.savefig("best_model_loss_accuracy.png")
 plt.show()
 
-# Plot confusion matrix for the best ensemble model
+# Plot confusion matrix for the best model
+plt.clf()
 plt.figure(figsize=(8, 6))
-cm = confusion_matrix(Y_test, ensemble_predictions[best_model_index])
+cm = confusion_matrix(Y_test, all_predictions[best_model_index])
 plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
 plt.title('Confusion Matrix')
 plt.colorbar()
@@ -150,4 +152,8 @@ plt.ylabel('True Label')
 plt.tight_layout()
 for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
     plt.text(j, i, format(cm[i, j], 'd'), horizontalalignment="center", color="white" if cm[i, j] > cm.max() / 2 else "black")
+plt.savefig("best_model_confusion_matrix.png")
 plt.show()
+
+
+
