@@ -154,6 +154,3 @@ for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
     plt.text(j, i, format(cm[i, j], 'd'), horizontalalignment="center", color="white" if cm[i, j] > cm.max() / 2 else "black")
 plt.savefig("best_model_confusion_matrix.png")
 plt.show()
-
-
-
