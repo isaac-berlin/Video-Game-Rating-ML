@@ -7,6 +7,11 @@ import numpy as np
 file_path = 'Data\Video_games_esrb_rating.csv'
 data = pd.read_csv(file_path)
 
+# Displaying Useful Info: Distribution of ESRB_Rating
+rating_counts = data['esrb_rating'].value_counts()
+rating_percentages = (rating_counts / len(data)) * 100
+print(rating_percentages)
+
 # Display the first few rows of the dataframe
 data.head()
 
