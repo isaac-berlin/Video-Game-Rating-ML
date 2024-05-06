@@ -53,6 +53,7 @@ class MLP(nn.Module):
             x = F.relu(layer(x))
             x = self.dropout(x)
         x = self.fc_layers[-1](x)
+        x = F.softmax(x, dim=1)
         return x
 
 # Training multiple models
