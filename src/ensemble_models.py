@@ -45,6 +45,8 @@ bagging = BaggingClassifier(random_state=42)
 boosting = GradientBoostingClassifier(random_state=42)
 adaboostSAMME = AdaBoostClassifier(n_estimators=100, algorithm="SAMME",)
 XGBoost = XGBClassifier(random_state=42)
+XGBoost_Lasso = XGBClassifier(random_state=42, alpha=1)  
+
 
 # Train the models
 random_forest.fit(X_train, y_train)
@@ -52,6 +54,7 @@ bagging.fit(X_train, y_train)
 boosting.fit(X_train, y_train)
 adaboostSAMME.fit(X_train, y_train)
 XGBoost.fit(X_train, y_train)
+XGBoost_Lasso.fit(X_train, y_train)
 
 # Predictions
 rf_pred = random_forest.predict(X_test)
@@ -59,6 +62,7 @@ bagging_pred = bagging.predict(X_test)
 boosting_pred = boosting.predict(X_test)
 adaboostSAMME_pred = adaboostSAMME.predict(X_test)
 XGBoost_pred = XGBoost.predict(X_test)
+XGBoost_Lasso_pred = XGBoost_Lasso.predict(X_test)
 
 # Evaluate the models
 rf_accuracy = accuracy_score(y_test, rf_pred)
@@ -66,6 +70,7 @@ bagging_accuracy = accuracy_score(y_test, bagging_pred)
 boosting_accuracy = accuracy_score(y_test, boosting_pred)
 adaboostSAMME_accuracy = accuracy_score(y_test, adaboostSAMME_pred)
 XGBoost_accuracy = accuracy_score(y_test, XGBoost_pred)
+XGBoost_Lasso_accuracy = accuracy_score(y_test, XGBoost_Lasso_pred)
 
 rf_accuracy, bagging_accuracy, boosting_accuracy, adaboostSAMME_accuracy, XGBoost_accuracy
 print("")
@@ -94,6 +99,12 @@ print("XGBoost Boosting Recall: ", recall_score(y_test, XGBoost_pred, average='w
 print("XGBoost Boosting Precision: ", precision_score(y_test, XGBoost_pred, average='weighted'))
 print("XGBoost Boosting F1 Score: ", f1_score(y_test, XGBoost_pred, average='weighted'), "\n")
 
+print("XGBoost Lasso Boosting Accuracy: ", XGBoost_Lasso_accuracy)
+print("XGBoost Lasso Boosting Recall: ", recall_score(y_test, XGBoost_Lasso_pred, average='weighted'))
+print("XGBoost Lasso Boosting Precision: ", precision_score(y_test, XGBoost_Lasso_pred, average='weighted'))
+print("XGBoost Lasso Boosting F1 Score: ", f1_score(y_test, XGBoost_Lasso_pred, average='weighted'), "\n")
+
+
 # Ensemble models on the test dataset
 
 
@@ -118,6 +129,7 @@ bagging_pred_test_set = bagging.predict(X_test_set)
 boosting_pred_test_set = boosting.predict(X_test_set)
 adaboostSAMME_pred_test_set = adaboostSAMME.predict(X_test_set)
 XGBoost_pred_test_set = XGBoost.predict(X_test_set)
+XGBoost_Lasso_pred_test_set = XGBoost_Lasso.predict(X_test_set)
 
 # Evaluate the models on the test set
 rf_accuracy_test_set = accuracy_score(y_test_set, rf_pred_test_set)
@@ -125,6 +137,7 @@ bagging_accuracy_test_set = accuracy_score(y_test_set, bagging_pred_test_set)
 boosting_accuracy_test_set = accuracy_score(y_test_set, boosting_pred_test_set)
 adaboostSAMME_accuracy_test_set = accuracy_score(y_test_set, adaboostSAMME_pred_test_set)
 XGBoost_accuracy_test_set = accuracy_score(y_test_set, XGBoost_pred_test_set)
+XGBoost_Lasso_accuracy_test_set = accuracy_score(y_test_set, XGBoost_Lasso_pred_test_set)
 
 # Performance metrics
 rf_recall_test_set = recall_score(y_test_set, rf_pred_test_set, average='weighted')
@@ -147,14 +160,46 @@ XGBoost_recall_test_set = recall_score(y_test_set, XGBoost_pred_test_set, averag
 XGBoost_precision_test_set = precision_score(y_test_set, XGBoost_pred_test_set, average='weighted')
 XGBoost_f1_test_set = f1_score(y_test_set, XGBoost_pred_test_set, average='weighted')
 
+XGBoost_Lasso_recall_test_set = recall_score(y_test_set, XGBoost_Lasso_pred_test_set, average='weighted')
+XGBoost_Lasso_precision_test_set = precision_score(y_test_set, XGBoost_Lasso_pred_test_set, average='weighted')
+XGBoost_Lasso_f1_test_set = f1_score(y_test_set, XGBoost_Lasso_pred_test_set, average='weighted')
+
+
+
 # Display the results
 results = {
-    "Model": ["Random Forest", "Bagging", "Boosting", "AdaBoostSAMME", "XGBoost"],
-    "Accuracy": [rf_accuracy_test_set, bagging_accuracy_test_set, boosting_accuracy_test_set, adaboostSAMME_accuracy_test_set, XGBoost_accuracy_test_set],
-    "Recall": [rf_recall_test_set, bagging_recall_test_set, boosting_recall_test_set, adaboostSAMME_recall_test_set, XGBoost_recall_test_set],
-    "Precision": [rf_precision_test_set, bagging_precision_test_set, boosting_precision_test_set, adaboostSAMME_precision_test_set, XGBoost_precision_test_set],
-    "F1 Score": [rf_f1_test_set, bagging_f1_test_set, boosting_f1_test_set, adaboostSAMME_f1_test_set, XGBoost_f1_test_set]
+    "Model": ["Random Forest", "Bagging", "Boosting", "AdaBoostSAMME", "XGBoost", "XGBoost Lasso"],
+    "Accuracy": [rf_accuracy_test_set, bagging_accuracy_test_set, boosting_accuracy_test_set, adaboostSAMME_accuracy_test_set, XGBoost_accuracy_test_set, XGBoost_Lasso_accuracy_test_set],
+    "Recall": [rf_recall_test_set, bagging_recall_test_set, boosting_recall_test_set, adaboostSAMME_recall_test_set, XGBoost_recall_test_set, XGBoost_Lasso_recall_test_set],
+    "Precision": [rf_precision_test_set, bagging_precision_test_set, boosting_precision_test_set, adaboostSAMME_precision_test_set, XGBoost_precision_test_set, XGBoost_Lasso_precision_test_set],
+    "F1 Score": [rf_f1_test_set, bagging_f1_test_set, boosting_f1_test_set, adaboostSAMME_f1_test_set, XGBoost_f1_test_set, XGBoost_Lasso_f1_test_set]
 }
+
+
+
+# Predictions on the training set
+rf_train_pred = random_forest.predict(X_train)
+bagging_train_pred = bagging.predict(X_train)
+boosting_train_pred = boosting.predict(X_train)
+adaboostSAMME_train_pred = adaboostSAMME.predict(X_train)
+XGBoost_train_pred = XGBoost.predict(X_train)
+XGBoost_Lasso_train_pred = XGBoost_Lasso.predict(X_train)
+
+# Training accuracies
+rf_train_accuracy = accuracy_score(y_train, rf_train_pred)
+bagging_train_accuracy = accuracy_score(y_train, bagging_train_pred)
+boosting_train_accuracy = accuracy_score(y_train, boosting_train_pred)
+adaboostSAMME_train_accuracy = accuracy_score(y_train, adaboostSAMME_train_pred)
+XGBoost_train_accuracy = accuracy_score(y_train, XGBoost_train_pred)
+XGBoost_Lasso_train_accuracy = accuracy_score(y_train, XGBoost_Lasso_train_pred)
+
+# Printing the training accuracies
+print("Random Forest Training Accuracy: ", rf_train_accuracy)
+print("Bagging Training Accuracy: ", bagging_train_accuracy)
+print("Boosting Training Accuracy: ", boosting_train_accuracy)
+print("AdaBoost SAMME Training Accuracy: ", adaboostSAMME_train_accuracy)
+print("XGBoost Training Accuracy: ", XGBoost_train_accuracy)
+print("XGBoost Lasso Training Accuracy: ", XGBoost_Lasso_train_accuracy)
 
 print(pd.DataFrame(results))
 
@@ -162,22 +207,25 @@ print(pd.DataFrame(results))
 # Plotting the accuracy of the models
 models = ["Random Forest", "Bagging", "Boosting", "AdaBoostSAMME", "XGBoost"]
 
-validation_accuracies_actual = [0.8522, 0.8549, 0.8443, 0.7599, 0.8628]
-test_accuracies_actual = [0.9103, 0.9082, 0.8786, 0.7604, 0.9108]
+training_accuracies_actual = [rf_train_accuracy, bagging_train_accuracy, boosting_train_accuracy, adaboostSAMME_train_accuracy, XGBoost_train_accuracy]
+validation_accuracies_actual = [0.852, 0.854, 0.844, 0.759, 0.862]
+test_accuracies_actual = [.850, 0.838, 0.792, 0.774, 0.824]
 
-bar_width = 0.35
+bar_width = 0.25 
 index = np.arange(len(models))
 
 fig, ax = plt.subplots()
-bar1 = ax.bar(index, validation_accuracies_actual, bar_width, label='Validation Accuracy')
-bar2 = ax.bar(index + bar_width, test_accuracies_actual, bar_width, label='Test Accuracy')
+bar1 = ax.bar(index - bar_width, training_accuracies_actual, bar_width, label='Training Accuracy')
+bar2 = ax.bar(index, validation_accuracies_actual, bar_width, label='Validation Accuracy')
+bar3 = ax.bar(index + bar_width, test_accuracies_actual, bar_width, label='Test Accuracy')
 
 ax.set_xlabel('Model')
 ax.set_ylabel('Accuracy')
-ax.set_title('Validation vs Test Accuracy for Different Models')
-ax.set_xticks(index + bar_width / 2)
+ax.set_title('Training, Validation, and Test Accuracy for Different Models')
+ax.set_xticks(index)
 ax.set_xticklabels(models)
 ax.legend()
+
 
 plt.show()
 def plot_confusion_matrix(y_test, predictions, title='Confusion Matrix', filename='confusion_matrix.png'):
